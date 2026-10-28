@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Step Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one centered card. A big step ring on top, controls and a sensitivity slider below. */
+:root {
+  --bg: #e4f1fb;
+  --bg-2: #d3e9f9;
+  --card: #ffffff;
+  --ink: #163449;
+  --muted: #5d7d91;
+  --accent: #2f8fd6;
+  --accent-dark: #1f6fae;
+  --accent-soft: #d9ecfb;
+  --ring-track: #dceefa;
+  --line: #d3e6f5;
+  --good: #1f9d6b;
+  --warn: #c17d1f;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+  color: var(--ink);
+  font-family: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 24px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  justify-content: center;
+}
+.app { width: 100%; max-width: 420px; min-width: 0; display: grid; gap: 16px; }
+
+h1 {
+  margin: 0;
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  font-size: 26px;
+  text-align: center;
+  color: var(--accent-dark);
+}
+.sub { text-align: center; color: var(--muted); font-size: 13px; margin-top: -8px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+  box-shadow: 0 10px 30px -18px rgba(31, 111, 174, 0.35);
+}
+
+.ring-wrap { display: flex; justify-content: center; padding: 6px 0; }
+.ring { position: relative; width: 220px; height: 220px; }
+.ring svg { transform: rotate(-90deg); }
+.ring-track { fill: none; stroke: var(--ring-track); stroke-width: 14; }
+.ring-fill { fill: none; stroke: var(--accent); stroke-width: 14; stroke-linecap: round; transition: stroke-dashoffset 0.35s ease; }
+.ring-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; text-align: center;
+}
+.ring-center strong { font-family: "Fraunces", Georgia, serif; font-size: 48px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; line-height: 1; }
+.ring-center span { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+.status-row { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+.dot.on { background: var(--good); }
+.dot.off { background: var(--warn); }
+
+.goal-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; color: var(--muted); }
+.goal-row input { width: 90px; font: inherit; color: var(--ink); background: var(--accent-soft); border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; text-align: right; }
+
+button {
+  font: inherit; font-weight: 600; color: var(--accent-dark);
+  background: var(--accent-soft); border: 1px solid var(--line);
+  border-radius: 999px; padding: 12px 18px; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; font-size: 16px; }
+button.primary:hover { background: var(--accent-dark); }
+button.ghost { background: transparent; color: var(--muted); font-weight: 500; }
+button[disabled] { opacity: 0.55; cursor: default; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row > button { flex: 1 1 0; min-width: 0; }
+
+.sens { display: grid; gap: 6px; }
+.sens .lbl { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.manual {
+  display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+  background: var(--accent-soft); border-radius: 14px; padding: 10px 14px;
+}
+.manual p { margin: 0; font-size: 13px; color: var(--accent-dark); }
+.manual button { padding: 8px 14px; }
+
+.note {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 14px 16px; font-size: 13px; color: var(--muted); display: grid; gap: 6px;
+}
+.note strong { color: var(--ink); }
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <div>
+    <h1>Step Tracker</h1>
+    <p class="sub">Walk with your phone in hand and watch the count rise.</p>
+  </div>
+
+  <section class="card">
+    <div class="ring-wrap">
+      <div class="ring">
+        <svg width="220" height="220" viewBox="0 0 220 220">
+          <circle class="ring-track" cx="110" cy="110" r="96"></circle>
+          <circle id="ringFill" class="ring-fill" cx="110" cy="110" r="96" stroke-dasharray="603" stroke-dashoffset="603"></circle>
+        </svg>
+        <div class="ring-center">
+          <strong id="stepCount">0</strong>
+          <span>steps</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-row">
+      <span id="statusDot" class="dot off" aria-hidden="true"></span>
+      <span id="statusText">Motion sensor not started</span>
+    </div>
+
+    <div class="goal-row">
+      <span>Daily goal</span>
+      <input id="goalInput" type="number" min="100" step="100" value="2000" aria-label="Daily step goal">
+    </div>
+
+    <div class="row">
+      <button type="button" id="startBtn" class="primary">Start tracking</button>
+      <button type="button" id="resetBtn" class="ghost">Reset</button>
+    </div>
+
+    <div class="sens">
+      <div class="lbl"><span>Sensitivity</span><span id="sensVal">Medium</span></div>
+      <input type="range" id="sensSlider" min="1" max="3" step="1" value="2" aria-label="Sensitivity">
+    </div>
+  </section>
+
+  <div class="manual">
+    <p>Sensor not picking up your steps? Add one by hand.</p>
+    <button type="button" id="manualBtn">+1 step</button>
+  </div>
+
+  <div class="note" id="helpNote">
+    <strong>For real step counting:</strong>
+    <span>Open this page in your phone's browser and tap "Start tracking". iPhone will ask for motion permission once — allow it. This works best outside any in-app preview, directly in Chrome or Safari.</span>
+  </div>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var stepCountEl = $("stepCount"), ringFill = $("ringFill"), statusDot = $("statusDot"), statusText = $("statusText");
+  var startBtn = $("startBtn"), resetBtn = $("resetBtn"), manualBtn = $("manualBtn");
+  var sensSlider = $("sensSlider"), sensVal = $("sensVal"), goalInput = $("goalInput"), helpNote = $("helpNote");
+
+  var STORE_KEY = "step-tracker-v1";
+  var CIRC = 603; // 2 * PI * r(96), matches stroke-dasharray
+  var steps = 0;
+  var goal = 2000;
+  var tracking = false;
+  var listening = false;
+
+  // Peak-detection pedometer: track the magnitude of device acceleration,
+  // count a step when it rises past a threshold and falls back below it,
+  // with a short refractory window so one footfall isn't counted twice.
+  var THRESH = { 1: 1.6, 2: 1.15, 3: 0.75 }; // 1 = low sensitivity, 3 = high
+  var threshold = THRESH[2];
+  var armed = true;
+  var lastStepTime = 0;
+  var MIN_INTERVAL = 280; // ms between counted steps
+  var smoothed = 9.8;
+  var ALPHA = 0.15;
+
+  function loadState() {
+    try {
+      var v = JSON.parse(localStorage.getItem(STORE_KEY) || "{}");
+      if (typeof v.steps === "number") steps = v.steps;
+      if (typeof v.goal === "number") goal = v.goal;
+    } catch (e) {}
+  }
+  function saveState() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ steps: steps, goal: goal })); } catch (e) {}
+  }
+
+  function render() {
+    stepCountEl.textContent = steps;
+    var pct = Math.max(0, Math.min(1, steps / goal));
+    ringFill.setAttribute("stroke-dashoffset", String(CIRC * (1 - pct)));
+    goalInput.value = goal;
+  }
+
+  function setStatus(text, state) {
+    statusText.textContent = text;
+    statusDot.className = "dot" + (state ? " " + state : "");
+  }
+
+  function addStep() {
+    steps += 1;
+    saveState();
+    render();
+  }
+
+  function onMotion(e) {
+    var a = (e.accelerationIncludingGravity && (e.accelerationIncludingGravity.x != null))
+      ? e.accelerationIncludingGravity
+      : e.acceleration;
+    if (!a || a.x == null) return;
+    var mag = Math.sqrt((a.x || 0) * (a.x || 0) + (a.y || 0) * (a.y || 0) + (a.z || 0) * (a.z || 0));
+    smoothed = smoothed + ALPHA * (mag - smoothed);
+    var delta = mag - smoothed;
+    var now = Date.now();
+
+    if (armed && delta > threshold && (now - lastStepTime) > MIN_INTERVAL) {
+      armed = false;
+      lastStepTime = now;
+      addStep();
+    } else if (!armed && delta < threshold * 0.4) {
+      armed = true;
+    }
+    if (!listening) {
+      listening = true;
+      setStatus("Tracking your steps", "on");
+    }
+  }
+
+  function startTracking() {
+    if (tracking) return;
+    if (typeof DeviceMotionEvent === "undefined") {
+      setStatus("This device has no motion sensor access", "off");
+      return;
+    }
+    var begin = function () {
+      tracking = true;
+      listening = false;
+      armed = true;
+      smoothed = 9.8;
+      window.addEventListener("devicemotion", onMotion, true);
+      startBtn.textContent = "Stop tracking";
+      setStatus("Waiting for movement…", "on");
+      setTimeout(function () {
+        if (tracking && !listening) setStatus("No motion data reaching this page — use +1 step below", "off");
+      }, 4000);
+    };
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+      DeviceMotionEvent.requestPermission().then(function (result) {
+        if (result === "granted") begin();
+        else setStatus("Motion permission was declined", "off");
+      }).catch(function () {
+        setStatus("Couldn't request motion permission", "off");
+      });
+    } else {
+      begin();
+    }
+  }
+
+  function stopTracking() {
+    tracking = false;
+    listening = false;
+    window.removeEventListener("devicemotion", onMotion, true);
+    startBtn.textContent = "Start tracking";
+    setStatus("Motion sensor paused", "off");
+  }
+
+  startBtn.addEventListener("click", function () {
+    if (tracking) stopTracking(); else startTracking();
+  });
+
+  resetBtn.addEventListener("click", function () {
+    steps = 0;
+    saveState();
+    render();
+  });
+
+  manualBtn.addEventListener("click", addStep);
+
+  sensSlider.addEventListener("input", function () {
+    var v = Number(sensSlider.value);
+    threshold = THRESH[v] || THRESH[2];
+    sensVal.textContent = v === 1 ? "Low" : v === 3 ? "High" : "Medium";
+  });
+
+  goalInput.addEventListener("change", function () {
+    var v = Math.max(100, Math.round(Number(goalInput.value) || 2000));
+    goal = v;
+    saveState();
+    render();
+  });
+
+  if (window.isSecureContext === false) {
+    helpNote.innerHTML = "<strong>Heads up:</strong><span>This page isn't on a secure (https) connection. Some phone browsers block motion sensors outside https, so if Start tracking does not respond, use the +1 step button instead.</span>";
+  }
+
+  loadState();
+  render();
+})();
+</script>
+</body>
+</html>
